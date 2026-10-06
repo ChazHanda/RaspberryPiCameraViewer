@@ -10,8 +10,8 @@ root.destroy()
 
 half_width = screen_width // 2
 
-camera1 = cv2.VideoCapture("/dev/video0")
-camera2 = cv2.VideoCapture("/dev/video2")
+camera1 = cv2.VideoCapture("/dev/video0", cv2.CAP_V4L2)
+camera2 = cv2.VideoCapture("/dev/video2", cv2.CAP_V4L2)
 
 if not camera1.isOpened():
     print("Could not open /dev/video0")
