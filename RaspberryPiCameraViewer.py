@@ -5,10 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 
-# --------------------------------------------------
-# Output folder
-# --------------------------------------------------
-
 # Creates an "output" folder next to this Python file.
 script_directory = Path(__file__).resolve().parent
 output_directory = script_directory / "output"
@@ -18,11 +14,6 @@ output_directory.mkdir(
     exist_ok=True
 )
 
-
-# --------------------------------------------------
-# Get screen resolution
-# --------------------------------------------------
-
 root = tk.Tk()
 
 screen_width = root.winfo_screenwidth()
@@ -30,13 +21,6 @@ screen_height = root.winfo_screenheight()
 
 root.destroy()
 
-
-# --------------------------------------------------
-# Cameras
-# --------------------------------------------------
-
-# Camera 1 = /dev/video0
-# Camera 2 = /dev/video2
 camera1 = cv2.VideoCapture(
     "/dev/video0",
     cv2.CAP_V4L2
@@ -56,16 +40,11 @@ latest_frames = {
 
 
 # VideoWriter used by each camera.
-# None means that camera is not currently recording.
 video_writers = {
     1: None,
     2: None
 }
 
-
-# --------------------------------------------------
-# Display functions
-# --------------------------------------------------
 
 # Function to size screen areas
 def fit_to_area(frame, width, height):
@@ -140,11 +119,6 @@ def full_screen(camera_number, frame1, frame2):
         screen_height
     )
 
-
-# --------------------------------------------------
-# File functions
-# --------------------------------------------------
-
 # Function to create a unique filename
 def create_file_name(camera_number, file_type):
     timestamp = datetime.now().strftime(
@@ -212,10 +186,6 @@ def save_image(camera_number):
         )
 
 
-# --------------------------------------------------
-# Recording functions
-# --------------------------------------------------
-
 # Get the FPS reported by a camera
 def get_camera_fps(camera_number):
     if camera_number == 1:
@@ -257,8 +227,7 @@ def start_recording(camera_number):
         )
         return
 
-    # Don't start another recording if this camera
-    # is already recording.
+    # Don't start another recording if this camera is already recording.
     if video_writers[camera_number] is not None:
         print(
             f"Camera {camera_number} "
@@ -346,10 +315,6 @@ def stop_recording(camera_number):
     )
 
 
-# --------------------------------------------------
-# Check cameras
-# --------------------------------------------------
-
 if not camera1.isOpened():
     print(
         "Could not open "
@@ -372,10 +337,6 @@ if not camera2.isOpened():
     raise SystemExit
 
 
-# --------------------------------------------------
-# Create viewer window
-# --------------------------------------------------
-
 cv2.namedWindow(
     "Camera Viewer",
     cv2.WINDOW_NORMAL
@@ -391,11 +352,6 @@ cv2.setWindowProperty(
 # Default display mode
 mode = "split"
 
-
-# --------------------------------------------------
-# Main program loop
-# --------------------------------------------------
-
 try:
     while True:
 
@@ -403,14 +359,12 @@ try:
         ret1, frame1 = camera1.read()
         ret2, frame2 = camera2.read()
 
-
         if not ret1:
             print(
                 "Could not read "
                 "/dev/video0"
             )
             break
-
 
         if not ret2:
             print(
