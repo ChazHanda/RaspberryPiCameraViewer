@@ -2,16 +2,51 @@ import cv2
 import tkinter as tk
 import numpy as np
 from datetime import datetime
+from pathlib import Path
 
+
+# --------------------------------------------------
+# Output folder
+# --------------------------------------------------
+
+# Creates an "output" folder next to this Python file.
+script_directory = Path(__file__).resolve().parent
+output_directory = script_directory / "output"
+
+output_directory.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+
+# --------------------------------------------------
 # Get screen resolution
+# --------------------------------------------------
+
 root = tk.Tk()
+
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
+
 root.destroy()
 
 
-camera1 = cv2.VideoCapture("/dev/video0", cv2.CAP_V4L2)
-camera2 = cv2.VideoCapture("/dev/video2", cv2.CAP_V4L2)
+# --------------------------------------------------
+# Cameras
+# --------------------------------------------------
+
+# Camera 1 = /dev/video0
+# Camera 2 = /dev/video2
+camera1 = cv2.VideoCapture(
+    "/dev/video0",
+    cv2.CAP_V4L2
+)
+
+camera2 = cv2.VideoCapture(
+    "/dev/video2",
+    cv2.CAP_V4L2
+)
+
 
 # Most recently captured frame from each camera
 latest_frames = {
@@ -26,6 +61,11 @@ video_writers = {
     1: None,
     2: None
 }
+
+
+# --------------------------------------------------
+# Display functions
+# --------------------------------------------------
 
 # Function to size screen areas
 def fit_to_area(frame, width, height):
@@ -82,17 +122,16 @@ def split_screen(frame1, frame2):
     ])
 
 
-
 # Function to full-screen one camera feed
 def full_screen(camera_number, frame1, frame2):
-    if camera_number == 0:
+    if camera_number == 1:
         frame = frame1
 
     elif camera_number == 2:
         frame = frame2
 
     else:
-        print("Invalid camera number")
+        print(f"Invalid camera number: {camera_number}")
         return None
 
     return fit_to_area(
@@ -100,10 +139,17 @@ def full_screen(camera_number, frame1, frame2):
         screen_width,
         screen_height
     )
-    
-# Function to create a filename
+
+
+# --------------------------------------------------
+# File functions
+# --------------------------------------------------
+
+# Function to create a unique filename
 def create_file_name(camera_number, file_type):
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+    timestamp = datetime.now().strftime(
+        "%Y-%m-%d_%H-%M-%S-%f"
+    )
 
     if file_type == "image":
         extension = "jpg"
@@ -112,21 +158,35 @@ def create_file_name(camera_number, file_type):
         extension = "mp4"
 
     else:
-        raise ValueError("file_type must be 'image' or 'video'")
+        raise ValueError(
+            "file_type must be 'image' or 'video'"
+        )
 
-    return f"camera{camera_number}_{timestamp}.{extension}"
+    file_name = (
+        f"camera{camera_number}_"
+        f"{timestamp}."
+        f"{extension}"
+    )
 
-# Function to save an image on a specified camera
+    return output_directory / file_name
+
+
+# Function to save an image from a specified camera
 def save_image(camera_number):
-
     if camera_number not in latest_frames:
-        print(f"Invalid camera number: {camera_number}")
+        print(
+            f"Invalid camera number: "
+            f"{camera_number}"
+        )
         return
 
     frame = latest_frames[camera_number]
 
     if frame is None:
-        print(f"No frame available from camera {camera_number}")
+        print(
+            f"No frame available from "
+            f"camera {camera_number}"
+        )
         return
 
     file_name = create_file_name(
@@ -135,31 +195,84 @@ def save_image(camera_number):
     )
 
     success = cv2.imwrite(
-        file_name,
+        str(file_name),
         frame
     )
 
     if success:
-        print(f"Saved image: {file_name}")
+        print(
+            f"Saved image: "
+            f"{file_name}"
+        )
 
     else:
-        print(f"Failed to save image from camera {camera_number}")
+        print(
+            f"Failed to save image from "
+            f"camera {camera_number}"
+        )
 
-# Function starts recording on specified camera
+
+# --------------------------------------------------
+# Recording functions
+# --------------------------------------------------
+
+# Get the FPS reported by a camera
+def get_camera_fps(camera_number):
+    if camera_number == 1:
+        camera = camera1
+
+    elif camera_number == 2:
+        camera = camera2
+
+    else:
+        print(
+            f"Invalid camera number: "
+            f"{camera_number}"
+        )
+        return 30.0
+
+    fps = camera.get(
+        cv2.CAP_PROP_FPS
+    )
+
+    # Some cameras/drivers report 0 or an invalid value.
+    if fps <= 0 or fps > 120:
+        print(
+            f"Could not determine FPS for "
+            f"camera {camera_number}. "
+            f"Using 30 FPS."
+        )
+
+        return 30.0
+
+    return fps
+
+
+# Function to start recording a specified camera
 def start_recording(camera_number):
-
     if camera_number not in video_writers:
-        print(f"Invalid camera number: {camera_number}")
+        print(
+            f"Invalid camera number: "
+            f"{camera_number}"
+        )
         return
 
+    # Don't start another recording if this camera
+    # is already recording.
     if video_writers[camera_number] is not None:
-        print(f"Camera {camera_number} is already recording")
+        print(
+            f"Camera {camera_number} "
+            f"is already recording"
+        )
         return
 
     frame = latest_frames[camera_number]
 
     if frame is None:
-        print(f"No frame available from camera {camera_number}")
+        print(
+            f"No frame available from "
+            f"camera {camera_number}"
+        )
         return
 
     frame_height, frame_width = frame.shape[:2]
@@ -169,52 +282,99 @@ def start_recording(camera_number):
         "video"
     )
 
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fps = get_camera_fps(
+        camera_number
+    )
+
+    fourcc = cv2.VideoWriter_fourcc(
+        *"mp4v"
+    )
 
     writer = cv2.VideoWriter(
-        file_name,
+        str(file_name),
         fourcc,
-        30.0,
+        fps,
         (frame_width, frame_height)
     )
 
     if not writer.isOpened():
-        print(f"Could not start recording camera {camera_number}")
+        print(
+            f"Could not start recording "
+            f"camera {camera_number}"
+        )
+
+        writer.release()
         return
 
     video_writers[camera_number] = writer
 
     print(
-        f"Started recording camera {camera_number}: "
-        f"{file_name}"
+        f"Started recording camera "
+        f"{camera_number}: {file_name}"
     )
-# Function stops recording on specified camera
-def stop_recording(camera_number):
 
+    print(
+        f"Recording FPS: {fps}"
+    )
+
+
+# Function to stop recording a specified camera
+def stop_recording(camera_number):
     if camera_number not in video_writers:
-        print(f"Invalid camera number: {camera_number}")
+        print(
+            f"Invalid camera number: "
+            f"{camera_number}"
+        )
         return
 
     writer = video_writers[camera_number]
 
     if writer is None:
-        print(f"Camera {camera_number} is not recording")
+        print(
+            f"Camera {camera_number} "
+            f"is not recording"
+        )
         return
 
     writer.release()
 
     video_writers[camera_number] = None
 
-    print(f"Stopped recording camera {camera_number}")
+    print(
+        f"Stopped recording camera "
+        f"{camera_number}"
+    )
 
-    
+
+# --------------------------------------------------
+# Check cameras
+# --------------------------------------------------
+
 if not camera1.isOpened():
-    print("Could not open /dev/video0")
-    exit()
+    print(
+        "Could not open "
+        "/dev/video0"
+    )
+
+    camera2.release()
+
+    raise SystemExit
+
 
 if not camera2.isOpened():
-    print("Could not open /dev/video2")
-    exit()
+    print(
+        "Could not open "
+        "/dev/video2"
+    )
+
+    camera1.release()
+
+    raise SystemExit
+
+
+# --------------------------------------------------
+# Create viewer window
+# --------------------------------------------------
 
 cv2.namedWindow(
     "Camera Viewer",
@@ -227,124 +387,164 @@ cv2.setWindowProperty(
     cv2.WINDOW_FULLSCREEN
 )
 
-# Default split-screen
+
+# Default display mode
 mode = "split"
 
-while True:
 
-    # Read both cameras every loop
-    ret1, frame1 = camera1.read()
-    ret2, frame2 = camera2.read()
+# --------------------------------------------------
+# Main program loop
+# --------------------------------------------------
 
-    if not ret1:
-        print("Could not read /dev/video0")
-        break
+try:
+    while True:
 
-    if not ret2:
-        print("Could not read /dev/video2")
-        break
+        # Read both cameras every loop
+        ret1, frame1 = camera1.read()
+        ret2, frame2 = camera2.read()
 
 
-    # Store the most recent original frames
-    latest_frames[1] = frame1
-    latest_frames[2] = frame2
+        if not ret1:
+            print(
+                "Could not read "
+                "/dev/video0"
+            )
+            break
 
 
-    # Record camera1 if recording
+        if not ret2:
+            print(
+                "Could not read "
+                "/dev/video2"
+            )
+            break
+
+
+        # Store the most recent original frames
+        latest_frames[1] = frame1
+        latest_frames[2] = frame2
+
+
+        # Record camera 1 if recording
+        if video_writers[1] is not None:
+            video_writers[1].write(
+                frame1
+            )
+
+
+        # Record camera 2 if recording
+        if video_writers[2] is not None:
+            video_writers[2].write(
+                frame2
+            )
+
+
+        # Select what will be displayed
+        if mode == "split":
+            frame = split_screen(
+                frame1,
+                frame2
+            )
+
+        elif mode == "camera1":
+            frame = full_screen(
+                1,
+                frame1,
+                frame2
+            )
+
+        elif mode == "camera2":
+            frame = full_screen(
+                2,
+                frame1,
+                frame2
+            )
+
+        else:
+            frame = None
+
+
+        if frame is None:
+            break
+
+
+        cv2.imshow(
+            "Camera Viewer",
+            frame
+        )
+
+
+        # waitKeyEx is needed for F1/F2
+        key = cv2.waitKeyEx(1)
+
+
+        # Q = Quit
+        if key == ord("q"):
+            break
+
+
+        # S = Split screen
+        elif key == ord("s"):
+            mode = "split"
+
+
+        # A = Camera 1 fullscreen
+        elif key == ord("a"):
+            mode = "camera1"
+
+
+        # D = Camera 2 fullscreen
+        elif key == ord("d"):
+            mode = "camera2"
+
+
+        # Z = Save image from camera 1
+        elif key == ord("z"):
+            save_image(1)
+
+
+        # C = Save image from camera 2
+        elif key == ord("c"):
+            save_image(2)
+
+
+        # F1 = Start recording camera 1
+        elif key in (
+            65470,
+            16777264
+        ):
+            start_recording(1)
+
+
+        # F2 = Start recording camera 2
+        elif key in (
+            65471,
+            16777265
+        ):
+            start_recording(2)
+
+
+        # 1 = Stop recording camera 1
+        elif key == ord("1"):
+            stop_recording(1)
+
+
+        # 2 = Stop recording camera 2
+        elif key == ord("2"):
+            stop_recording(2)
+
+
+finally:
+
+    # Properly finalize active recordings.
     if video_writers[1] is not None:
-        video_writers[1].write(frame1)
-
-    # Record camera2 if recording
-    if video_writers[2] is not None:
-        video_writers[2].write(frame2)
-
-
-    # Select what will be displayed
-    if mode == "split":
-        frame = split_screen(
-            frame1,
-            frame2
-        )
-
-    elif mode == "camera0":
-        frame = full_screen(
-            0,
-            frame1,
-            frame2
-        )
-
-    elif mode == "camera2":
-        frame = full_screen(
-            2,
-            frame1,
-            frame2
-        )
-
-    else:
-        frame = None
-
-
-    if frame is None:
-        break
-
-
-    cv2.imshow(
-        "Camera Viewer",
-        frame
-    )
-
-    # WaitKeyEx because F1/F2 are extended keys
-    key = cv2.waitKeyEx(1)
-
-    # Q = Quit
-    if key == ord("q"):
-        break
-
-    # S = Split screen
-    elif key == ord("s"):
-        mode = "split"
-
-    # A = /dev/video0 fullscreen
-    elif key == ord("a"):
-        mode = "camera0"
-
-    # D = /dev/video2 fullscreen
-    elif key == ord("d"):
-        mode = "camera2"
-
-
-    # Z = Save image from camera1
-    elif key == ord("z"):
-        save_image(1)
-
-    # C = Save image from camera2
-    elif key == ord("c"):
-        save_image(2)
-
-
-    # F1 = Start recording camera1
-    elif key in (65470, 16777264):
-        start_recording(1)
-
-    # F2 = Start recording camera2
-    elif key in (65471, 16777265):
-        start_recording(2)
-
-
-    # 1 = Stop recording camera1
-    elif key == ord("1"):
         stop_recording(1)
 
-    # 2 = Stop recording camera2
-    elif key == ord("2"):
+    if video_writers[2] is not None:
         stop_recording(2)
 
 
-# Finish any active video files before closing
-stop_recording(1)
-stop_recording(2)
+    camera1.release()
+    camera2.release()
 
-camera1.release()
-camera2.release()
-
-cv2.destroyAllWindows()
+    cv2.destroyAllWindows()
