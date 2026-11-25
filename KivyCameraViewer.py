@@ -1,8 +1,15 @@
 import cv2
-# import tkinter as tk  # OLD: Kivy now owns the application window.
 import numpy as np
 from datetime import datetime
 from pathlib import Path
+
+from kivy.config import Config
+# prevent double input
+Config.set(
+    "input",
+    "mouse",
+    "mouse,disable_on_activity"
+)
 
 from kivy.app import App
 from kivy.clock import Clock
