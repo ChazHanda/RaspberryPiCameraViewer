@@ -1,7 +1,8 @@
 # RaspberryPiCameraViewer
 
 ## Project Description
-A simple program that can display a USB camera connected to a Raspberry Pi.
+A program that can display a USB camera connected to a Raspberry Pi.
+The program has been reworked to use the GUI toolkit Kivy for touch controls. The original file, before using Kivy, is still available as a separate file.
 
 ## Components 
 - Raspberry Pi 5
