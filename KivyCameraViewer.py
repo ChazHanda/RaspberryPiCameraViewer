@@ -562,6 +562,8 @@ class CameraViewer(FloatLayout):
         )
 
         self.camera_image.texture = self.display_texture
+        
+        self.camera_image.canvas.ask_update()
 
     # Remember where a touch/mouse drag started.
     def on_touch_down(self, touch):
